@@ -22,4 +22,7 @@ public class User {
     private String gender;
     private String activityLevel;
     private String fitnessGoal;
+
+    @Column(columnDefinition = "TEXT")
+    private String aiSummary;
 }

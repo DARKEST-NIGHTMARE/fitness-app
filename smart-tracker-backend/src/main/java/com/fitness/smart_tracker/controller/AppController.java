@@ -46,12 +46,23 @@ public class AppController {
 
     @PostMapping("/log-weight")
     public BodyWeightLog logBodyWeight(@RequestBody BodyWeightLog log) {
-        User user = userRepository.findById(log.getUserId()).orElseThrow();
-        user.setWeight(log.getWeight());
+        Long userId = log.getUserId();
+        Double newWeight = log.getWeight();
+        LocalDate today = LocalDate.now();
+        User user = userRepository.findById(userId).orElseThrow();
+        user.setWeight(newWeight);
         userRepository.save(user);
 
-        log.setDateRecorded(LocalDate.now());
-        return weightLogRepository.save(log);
+        Optional<BodyWeightLog> existingLog = weightLogRepository.findByUserIdAndDateRecorded(userId, today);
+
+        if (existingLog.isPresent()) {
+            BodyWeightLog entry = existingLog.get();
+            entry.setWeight(newWeight);
+            return weightLogRepository.save(entry);
+        } else {
+            log.setDateRecorded(today);
+            return weightLogRepository.save(log);
+        }
     }
 
     @GetMapping("/weight-history/{userId}")
@@ -96,4 +107,9 @@ public class AppController {
 
     @GetMapping("/history/{userId}")
     public List<WorkoutLog> getHistory(@PathVariable Long userId) { return logRepository.findByUserId(userId); }
+
+    @PostMapping("/chat")
+    public String chat(@RequestParam Long userId, @RequestBody String message) {
+        return geminiService.chatWithUser(userId, message);
+    }
 }

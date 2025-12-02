@@ -1,6 +1,9 @@
 package com.fitness.smart_tracker.service;
 
+import com.fitness.smart_tracker.model.User;
+import com.fitness.smart_tracker.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -10,6 +13,33 @@ import java.util.List;
 
 @Service
 public class GeminiService {
+
+    @Autowired private FitnessAssistant assistant;
+    @Autowired private UserRepository userRepository;
+
+    public String chatWithUser(Long userId, String userMessage) {
+        User user = userRepository.findById(userId).orElseThrow();
+
+        String profile = String.format("Goal: %s, Weight: %.1fkg, Activity: %s",
+                user.getFitnessGoal(), user.getWeight(), user.getActivityLevel());
+
+        String summary = user.getAiSummary();
+        if (summary == null) summary = "No prior history.";
+        String response = assistant.chat(userId, userMessage, profile, summary, userId);
+
+        updateLongTermMemory(user, userMessage, response);
+
+        return response;
+    }
+
+    private void updateLongTermMemory(User user, String userMsg, String aiMsg) {
+        String oldSummary = user.getAiSummary();
+        if (oldSummary == null) oldSummary = "";
+        String interaction = "User: " + userMsg + "\nAI: " + aiMsg;
+        String newSummary = assistant.updateSummary("Update memory", oldSummary, interaction);
+        user.setAiSummary(newSummary);
+        userRepository.save(user);
+    }
 
     @Value("${gemini.api.key}")
     private String apiKey;
