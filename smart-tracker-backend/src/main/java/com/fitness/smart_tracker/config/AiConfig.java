@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Duration;
+
 @Configuration
 public class AiConfig {
 
@@ -20,8 +22,11 @@ public class AiConfig {
     public ChatLanguageModel chatLanguageModel() {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(apiKey)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-2.5-flash-lite")
                 .temperature(0.7)
+                .timeout(Duration.ofSeconds(320))
+                .maxRetries(3)
+                .logRequestsAndResponses(true)
                 .build();
     }
 

@@ -4,7 +4,7 @@ import com.fitness.smart_tracker.model.Injury;
 import com.fitness.smart_tracker.model.User;
 import com.fitness.smart_tracker.repository.InjuryRepository;
 import com.fitness.smart_tracker.repository.UserRepository;
-import dev.langchain4j.agent.tool.P; // Parameter annotation
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -19,17 +19,27 @@ public class FitnessTools {
     @Tool("Report a medical injury.Call this when user mentions pain or injury")
     public String reportInjury(
             @P("User ID")Long userId,
-            @P("Injury description (e.g. 'Shoulder Dislocation','knee Pain','Leg Injury')")String description
+            @P("Injury description (e.g. 'Shoulder Dislocation','knee Pain','Leg Injury')")String description,
+            @P("Severity level based on medical seriousness. " +
+                    "LOW: Minor aches, soreness, stiffness (3 days). " +
+                    "MEDIUM: Sprains, strains, deep pain, cuts (7 days). " +
+                    "HIGH: Fractures, dislocations, tears, surgery, severe pain (14 days).") String severity
+
     ){
         Injury injury = new Injury();
         injury.setUserId(userId);
-        injury.setDescription(description);
+        injury.setDescription(description + " (" + severity + ")");
         injury.setDateReported(LocalDate.now());
         injury.setActive(true);
-        long recoveryDays = 3;
-        if (description.toLowerCase().contains("dislocation")) recoveryDays = 14;
-        else if (description.toLowerCase().contains("fracture")) recoveryDays = 42;
-        else if (description.toLowerCase().contains("sprain")) recoveryDays = 7;
+        long recoveryDays = switch (severity.toUpperCase()) {
+            case "HIGH" -> 14;
+            case "MEDIUM" -> 7;
+            case "LOW" -> 3;
+            default -> 3;
+        };
+//        if (description.toLowerCase().contains("dislocation")) recoveryDays = 14;
+//        else if (description.toLowerCase().contains("fracture")) recoveryDays = 42;
+//        else if (description.toLowerCase().contains("sprain")) recoveryDays = 7;
         injury.setEstimatedRecoveryDate(LocalDate.now().plusDays(recoveryDays));
         injuryRepository.save(injury);
 

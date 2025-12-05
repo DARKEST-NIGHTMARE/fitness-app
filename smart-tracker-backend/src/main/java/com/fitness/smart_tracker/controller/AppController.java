@@ -80,12 +80,13 @@ public class AppController {
                 user.getFitnessGoal(), user.getWeight(), user.getHeight(), user.getActivityLevel());
 
         String weightHistory = weightLogs.stream()
+                .skip(Math.max(0, weightLogs.size() - 15))
                 .map(w -> w.getDateRecorded() + ":" + w.getWeight() + "kg")
                 .collect(Collectors.joining(", "));
 
         String recentWorkouts = workouts.stream()
                 .sorted((a, b) -> b.getDateCompleted().compareTo(a.getDateCompleted()))
-                .limit(10)
+                .limit(5)
                 .map(w -> String.format("%s: %s (Weight: %.1f, Time: %d)",
                         w.getDateCompleted(), w.getExerciseName(),
                         w.getWeightLifted() != null ? w.getWeightLifted() : 0.0,

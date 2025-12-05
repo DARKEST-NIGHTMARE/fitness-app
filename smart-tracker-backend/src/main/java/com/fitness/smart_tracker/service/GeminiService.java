@@ -8,7 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.DefaultUriBuilderFactory;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +29,10 @@ public class GeminiService {
     private final WebClient webClient;
 
     public GeminiService() {
+        HttpClient httpClient = HttpClient.create()
+                .responseTimeout(Duration.ofSeconds(60));
+
+
         DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory();
         factory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.NONE);
 
@@ -36,6 +42,7 @@ public class GeminiService {
     }
 
     public String chatWithUser(Long userId, String userMessage) {
+        try{
         User user = userRepository.findById(userId).orElseThrow();
 
         List<Injury> injuries = injuryRepository.findByUserIdAndActiveTrue(userId);
@@ -64,23 +71,39 @@ public class GeminiService {
 
         String summary = user.getAiSummary();
         if (summary == null) summary = "No prior history.";
+            if (summary.length() > 2000) {
+                summary = "..." + summary.substring(summary.length() - 2000);
+            }
 
         String response = assistant.chat(userId, userMessage, profile, summary, userId, healthStatus);
 
+//            System.out.println("response: "+ response);
+
         updateLongTermMemory(user, userMessage, response);
 
-        return response;
+        return response;} catch (Exception e) {
+            System.err.println("Chat Error: " + e.getMessage());
+            e.printStackTrace();
+            return "I'm having trouble connecting to the server right now. Please try again in a moment!";
+
+        }
     }
 
     private void updateLongTermMemory(User user, String userMsg, String aiMsg) {
+        try{
         String oldSummary = user.getAiSummary();
         if (oldSummary == null) oldSummary = "";
+//            if (oldSummary == null) oldSummary = "User is new.";
 
         String interaction = "User: " + userMsg + "\nAI: " + aiMsg;
-        String newSummary = assistant.updateSummary("Update", oldSummary, interaction);
+            String command = "Extract facts and update the memory.";
+        String newSummary = assistant.updateSummary(command, oldSummary, interaction);
 
         user.setAiSummary(newSummary);
         userRepository.save(user);
+    } catch (Exception e) {
+            System.err.println("Memory Update Failed (Non-critical): " + e.getMessage());
+        }
     }
     public String getWorkoutPlan(String prompt, String userDetails) {
         if (apiKey == null || apiKey.length() < 10) return "[]";
